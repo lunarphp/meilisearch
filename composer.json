@@ -13,7 +13,7 @@
   "require": {
       "php": "^8.0",
       "lunarphp/lunar": "^0.1",
-      "meilisearch/meilisearch-php": "^0.26.1",
+      "meilisearch/meilisearch-php": "^0.21.0",
       "laravel/scout": "^9.4"
   },
   "require-dev": {

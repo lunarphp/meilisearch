@@ -2,10 +2,10 @@
 
 namespace Lunar\Meilisearch\Console;
 
+use Exception;
 use Illuminate\Console\Command;
 use Laravel\Scout\EngineManager;
-use Laravel\Scout\Engines\MeiliSearchEngine;
-use MeiliSearch\Exceptions\ApiException;
+use Laravel\Scout\Engines\MeilisearchEngine;
 
 class MeilisearchSetup extends Command
 {
@@ -21,16 +21,17 @@ class MeilisearchSetup extends Command
      *
      * @var string
      */
-    protected $description = 'Set up Meilisearch';
+    protected $description = 'Set up filterable and sortable attributes to Meilisearch';
 
-    protected MeiliSearchEngine $engine;
+    /**
+     * Meilisearch engine
+     */
+    protected MeilisearchEngine $engine;
 
     /**
      * Execute the console command.
-     *
-     * @return mixed
      */
-    public function handle(EngineManager $engine)
+    public function handle(EngineManager $engine): void
     {
         // Return the models we want to search on.
         $searchables = config('lunar.search.models', []);
@@ -46,25 +47,27 @@ class MeilisearchSetup extends Command
             try {
                 $index = $this->engine->getIndex($indexName);
                 $this->warn("Index {$indexName} found for {$searchable}");
-            } catch (ApiException $e) {
+            } catch (Exception $e) {
                 $this->warn($e->getMessage());
                 $this->info("Creating index {$indexName} for {$searchable}");
-                $this->engine->createIndex($indexName);
-                sleep(1);
+
+                $task = $this->engine->createIndex($indexName);
+                $this->engine->waitForTask($task['taskUid']);
+
                 $index = $this->engine->getIndex($indexName);
             }
 
-            $this->info("Adding filterable fields to {$searchable}");
-
-            $index->updateFilterableAttributes(
+            $this->info("Update filterable fields to {$searchable}");
+            $task = $index->updateFilterableAttributes(
                 $model->getFilterableAttributes()
             );
+            $this->engine->waitForTask($task['taskUid']);
 
-            $this->info("Adding sortable fields to {$searchable}");
-
-            $index->updateSortableAttributes(
+            $this->info("Update sortable fields to {$searchable}");
+            $task = $index->updateSortableAttributes(
                 $model->getSortableAttributes()
             );
+            $this->engine->waitForTask($task['taskUid']);
 
             $this->newLine();
         }
